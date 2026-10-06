@@ -1,6 +1,7 @@
 using DotNetEnv;
 using Microsoft.EntityFrameworkCore;
 using WebAPIUsuario.Data;
+using WebAPIUsuario.Repositories;
 using WebAPIUsuario.Services;
 
 // Load environment variables from .env file (try parent directory for project structure)
@@ -28,6 +29,7 @@ var connectionString = $"Server={dbServer},{dbPort};Database={dbName};User Id={d
 
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseSqlServer(connectionString));
+builder.Services.AddScoped<IUsuarioRepository, UsuarioRepository>();
 builder.Services.AddScoped<IUsuarioService, UsuarioService>();
 builder.Services.AddControllers();
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi

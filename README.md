@@ -24,7 +24,7 @@ API REST para gestión de usuarios desarrollada con .NET 10, siguiendo arquitect
 
 ## 🏗 Arquitectura del Proyecto
 
-El proyecto sigue una arquitectura en capas con desacoplamiento de responsabilidades:
+El proyecto sigue una arquitectura en capas con desacoplamiento de responsabilidades, implementando el patrón Repository para separar la lógica de negocio del acceso a datos:
 
 ```
 ┌─────────────────────────────────────┐
@@ -38,7 +38,14 @@ El proyecto sigue una arquitectura en capas con desacoplamiento de responsabilid
 │   Services (Capa Lógica de Negocio) │
 │   - Lógica de negocio               │
 │   - Mapeo de entidades a DTOs       │
-│   - Operaciones CRUD                │
+│   - Orquestación de operaciones     │
+└──────────────┬──────────────────────┘
+               │
+┌──────────────▼──────────────────────┐
+│   Repositories (Capa de Repositorio)│
+│   - Abstracción del acceso a datos  │
+│   - Operaciones CRUD genéricas      │
+│   - Consultas especializadas        │
 └──────────────┬──────────────────────┘
                │
 ┌──────────────▼──────────────────────┐
@@ -51,10 +58,18 @@ El proyecto sigue una arquitectura en capas con desacoplamiento de responsabilid
 
 ### Patrones Utilizados
 
-- **Dependency Injection**: Inyección de dependencias para servicios y DbContext
-- **Repository Pattern**: Abstracción del acceso a datos vía DbContext
+- **Dependency Injection**: Inyección de dependencias para servicios, repositorios y DbContext
+- **Repository Pattern**: Abstracción del acceso a datos mediante interfaces de repositorio
 - **DTO Pattern**: Desacoplamiento de requests/responses de entidades de persistencia
 - **Service Layer**: Lógica de negocio separada de la capa de presentación
+- **Unit of Work**: Gestión transaccional implícita vía DbContext de EF Core
+
+### Beneficios de la Arquitectura
+
+- **Desacoplamiento**: La capa de servicio no depende directamente de Entity Framework
+- **Testabilidad**: Facilita el unit testing mediante mocks de repositorios
+- **Mantenibilidad**: Cambios en la tecnología de persistencia no afectan la lógica de negocio
+- **Reutilización**: Los repositorios pueden ser reutilizados por múltiples servicios
 
 ## 📁 Estructura de Carpetas
 
@@ -65,11 +80,14 @@ WebAPIUsuario/
 ├── Services/             # Lógica de negocio
 │   ├── IUsuarioService.cs      # Interfaz de servicio
 │   └── UsuarioService.cs       # Implementación
+├── Repositories/         # Capa de repositorio (acceso a datos)
+│   ├── IUsuarioRepository.cs   # Interfaz de repositorio
+│   └── UsuarioRepository.cs    # Implementación
 ├── DTOs/                  # Data Transfer Objects
 │   ├── CreateUsuarioDto.cs    # DTO para creación
 │   ├── UpdateUsuarioDto.cs    # DTO para actualización
 │   └── UsuarioResponseDto.cs  # DTO para respuestas
-├── Data/                  # Capa de acceso a datos
+├── Data/                  # Capa de persistencia
 │   └── AppDbContext.cs         # DbContext de EF Core
 ├── Models/                # Entidades de dominio
 │   └── Usuario.cs
@@ -187,7 +205,39 @@ curl -X PUT http://localhost:5239/api/Usuario/1 \
 curl -X DELETE http://localhost:5239/api/Usuario/1
 ```
 
-## 📦 DTOs
+## � Capa de Repositorio
+
+### IUsuarioRepository
+Interfaz que define las operaciones de acceso a datos para la entidad Usuario. Abstrae la lógica de persistencia y permite la inyección de dependencias.
+
+```csharp
+public interface IUsuarioRepository
+{
+    Task<IEnumerable<Usuario>> GetAllAsync();
+    Task<Usuario?> GetByIdAsync(int id);
+    Task<Usuario> AddAsync(Usuario usuario);
+    Task<Usuario?> UpdateAsync(Usuario usuario);
+    Task<bool> DeleteAsync(int id);
+    Task<bool> ExistsAsync(int id);
+}
+```
+
+### UsuarioRepository
+Implementación concreta que utiliza Entity Framework Core para interactuar con la base de datos.
+
+**Características:**
+- Ciclo de vida `Scoped` en inyección de dependencias
+- Operaciones asíncronas para mejor rendimiento
+- Manejo de DbContext para persistencia
+- Validación de existencia de entidades antes de operaciones
+
+**Ventajas de esta implementación:**
+- La capa de servicio no depende directamente de EF Core
+- Facilita pruebas unitarias mediante mocks
+- Permite cambiar la tecnología de persistencia sin afectar la lógica de negocio
+- Centraliza la lógica de acceso a datos
+
+## �📦 DTOs
 
 ### CreateUsuarioDto
 DTO para la creación de usuarios. Incluye validaciones de datos.

@@ -1,28 +1,27 @@
-using Microsoft.EntityFrameworkCore;
-using WebAPIUsuario.Data;
 using WebAPIUsuario.DTOs;
 using WebAPIUsuario.Models;
+using WebAPIUsuario.Repositories;
 
 namespace WebAPIUsuario.Services;
 
 public class UsuarioService : IUsuarioService
 {
-    private readonly AppDbContext _context;
+    private readonly IUsuarioRepository _usuarioRepository;
 
-    public UsuarioService(AppDbContext context)
+    public UsuarioService(IUsuarioRepository usuarioRepository)
     {
-        _context = context;
+        _usuarioRepository = usuarioRepository;
     }
 
     public async Task<IEnumerable<UsuarioResponseDto>> GetAllUsuariosAsync()
     {
-        var usuarios = await _context.Usuarios.ToListAsync();
+        var usuarios = await _usuarioRepository.GetAllAsync();
         return usuarios.Select(MapToDto);
     }
 
     public async Task<UsuarioResponseDto?> GetUsuarioByIdAsync(int id)
     {
-        var usuario = await _context.Usuarios.FindAsync(id);
+        var usuario = await _usuarioRepository.GetByIdAsync(id);
         return usuario != null ? MapToDto(usuario) : null;
     }
 
@@ -37,14 +36,13 @@ public class UsuarioService : IUsuarioService
             FechaCreacion = DateTime.Now
         };
 
-        _context.Usuarios.Add(usuario);
-        await _context.SaveChangesAsync();
-        return MapToDto(usuario);
+        var usuarioCreado = await _usuarioRepository.AddAsync(usuario);
+        return MapToDto(usuarioCreado);
     }
 
     public async Task<UsuarioResponseDto?> UpdateUsuarioAsync(int id, UpdateUsuarioDto usuarioDto)
     {
-        var usuarioExistente = await _context.Usuarios.FindAsync(id);
+        var usuarioExistente = await _usuarioRepository.GetByIdAsync(id);
         if (usuarioExistente == null)
         {
             return null;
@@ -55,21 +53,13 @@ public class UsuarioService : IUsuarioService
         usuarioExistente.Correo = usuarioDto.Correo;
         usuarioExistente.Username = usuarioDto.Username;
 
-        await _context.SaveChangesAsync();
-        return MapToDto(usuarioExistente);
+        var usuarioActualizado = await _usuarioRepository.UpdateAsync(usuarioExistente);
+        return usuarioActualizado != null ? MapToDto(usuarioActualizado) : null;
     }
 
     public async Task<bool> DeleteUsuarioAsync(int id)
     {
-        var usuario = await _context.Usuarios.FindAsync(id);
-        if (usuario == null)
-        {
-            return false;
-        }
-
-        _context.Usuarios.Remove(usuario);
-        await _context.SaveChangesAsync();
-        return true;
+        return await _usuarioRepository.DeleteAsync(id);
     }
 
     private static UsuarioResponseDto MapToDto(Usuario usuario)
